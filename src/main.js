@@ -1,3 +1,95 @@
+const MAGIC = new Uint8Array( [ 82, 65, 87, 71, 68 ] ) // RAWGD
+
+//
+
+const vertices = new Float32Array( [ - 5, 0, 5, 5, 0, 5, 5, 0, - 5, - 5, 0, - 5 ] )
+
+const buffer = encode( { vertices } )
+
+console.log( vertices )
+console.log( decode( buffer ).vertices )
+
+//
+
+function encode( { vertices } ) {
+
+	// Calculate buffer size in bytes:
+	// MAGIC.length = 5 bytes (for "RAWGD")
+	// 2 = vertex count storage (uint16 = 2 bytes)
+	// vertices.length * 2 = each float32 will be stored as float16 (2 bytes)
+	const size = MAGIC.length + 2 + vertices.length * 2
+
+	const buffer = new ArrayBuffer( size )
+	const view = new DataView( buffer )
+
+	let offset = 0
+
+	for ( let i = 0; i < MAGIC.length; i++ ) {
+
+		view.setUint8( offset, MAGIC[ i ] )
+
+		offset++
+	}
+
+	// Write vertex count
+	view.setUint16( offset, vertices.length / 3, true ) // true for little-endian
+	offset += 2
+
+	// Write vertices as float16
+	for ( let i = 0; i < vertices.length; i++ ) {
+
+		const float16 = float32ToFloat16( vertices[ i ] )
+		view.setUint16( offset, float16, true )
+
+		offset += 2
+	}
+
+	return buffer
+}
+
+function decode( buffer ) {
+
+	const view = new DataView( buffer )
+
+	let offset = 0
+
+	// Read and verify magic (5 bytes)
+	const magic = new Uint8Array( MAGIC.length )
+
+	for ( let i = 0; i < MAGIC.length; i++ ) {
+
+		magic[ i ] = view.getUint8( offset++ )
+	}
+
+	// Compare magic with expected value
+	for ( let i = 0; i < MAGIC.length; i++ ) {
+
+		if ( magic[ i ] !== MAGIC[ i ] ) {
+
+			throw new Error( "Invalid file format" )
+		}
+	}
+
+	// Read vertex count (uint16 = 2 bytes)
+	const vertexCount = view.getUint16( offset, true )
+	offset += 2
+
+	// Read vertices (each vertex component is float16 = 2 bytes)
+	const vertices = new Float32Array( vertexCount * 3 )
+
+	for ( let i = 0; i < vertices.length; i++ ) {
+
+		const float16 = view.getUint16( offset, true )
+		vertices[ i ] = float16ToFloa32( float16 )
+
+		offset += 2
+	}
+
+	return {
+		vertices,
+	}
+}
+
 /**
  * Converts a 32-bit floating-point number (IEEE 754 single-precision) to 
  * 16-bit floating-point representation (IEEE 754 half-precision) returned
@@ -64,9 +156,9 @@ function float16ToFloa32( float16Bits ) {
 
 	// Decompose Float16 into components
 	// IEEE 754 Float16 layout: [1 sign bit | 5 exponent bits | 10 mantissa bits]
-	const signBit = ( float16Bits & 0x8000 ) << 16 // Move sign to Float32 position
-	const rawExponent = ( float16Bits & 0x7C00 ) >>> 10 // Extract 5 exponent bits
-	const mantissaBits = ( float16Bits & 0x03FF ) << 13 // Move to Float32 mantissa position
+	const signBit = ( float16Bits & 0x8000 ) << 16		// Move sign to Float32 position
+	const rawExponent = ( float16Bits & 0x7C00 ) >>> 10	// Extract 5 exponent bits
+	const mantissaBits = ( float16Bits & 0x03FF ) << 13	// Move to Float32 mantissa position
 
 	// Handle special values
 	if ( rawExponent === 0x1F ) { // Float16 infinity/NaN
@@ -85,5 +177,3 @@ function float16ToFloa32( float16Bits ) {
 
 	return new Float32Array( uint32Buffer.buffer )[ 0 ]
 }
-
-console.assert( 64.5 === float16ToFloa32( float32ToFloat16( 64.55 ) ), "Roundtrip conversion failed" )
