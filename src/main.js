@@ -1,38 +1,59 @@
 const MAGIC = new Uint8Array( [ 82, 65, 87, 71, 68 ] ) // RAWGD
 
+const HAS_NORMALS = 0x02 // 0x01 reserved for triangles (indices)
+
 //
 
 const vertices = new Float32Array( [ - 5, 0, 5, 5, 0, 5, 5, 0, - 5, - 5, 0, - 5 ] )
+const normals = new Float32Array( [ 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 ] )
 
-const buffer = encode( { vertices } )
+const buffer = encode( { vertices, normals } )
 
-console.log( vertices )
-console.log( decode( buffer ).vertices )
+{
+	const { vertices, normals } = decode( buffer )
 
-console.log( decodeUnitVector( ...encodeUnitVector( 0, 1, 0 ) ) )
-console.log( decodeUnitVector( ...encodeUnitVector( 0, 0, 1 ) ) )
+	console.log( [ ...vertices ] )
+	console.log( [ ...normals ] )
+}
 
 //
 
-function encode( { vertices } ) {
+function encode( { vertices, normals } ) {
 
-	// Calculate buffer size in bytes:
-	// MAGIC.length = 5 bytes (for "RAWGD")
-	// 2 = vertex count storage (uint16 = 2 bytes)
-	// vertices.length * 2 = each float32 will be stored as float16 (2 bytes)
-	const size = MAGIC.length + 2 + vertices.length * 2
+	let flags = 0
+
+	if ( normals ) {
+
+		flags |= HAS_NORMALS
+	}
+
+	// Calculate buffer size in bytes
+	let size = MAGIC.length			// 5 bytes for "RAWGD"
+	size += 1						// 1 byte for flags
+	size += 2						// 2 bytes for vertex count
+	size += vertices.length * 2		// 2 bytes per vertex component (float16)
+
+	if ( flags & HAS_NORMALS ) {
+
+		size += normals.length * 2 / 3	// 2 bytes per normal (octahedral encoded)
+	}
 
 	const buffer = new ArrayBuffer( size )
 	const view = new DataView( buffer )
 
 	let offset = 0
 
+	// Write magic
 	for ( let i = 0; i < MAGIC.length; i++ ) {
 
 		view.setUint8( offset, MAGIC[ i ] )
 
 		offset++
 	}
+
+	// Write flags
+	view.setUint8( offset, flags )
+	offset++
 
 	// Write vertex count
 	view.setUint16( offset, vertices.length / 3, true ) // true for little-endian
@@ -43,8 +64,19 @@ function encode( { vertices } ) {
 
 		const float16 = float32ToFloat16( vertices[ i ] )
 		view.setUint16( offset, float16, true )
-
 		offset += 2
+	}
+
+	// Write normals if present
+	if ( flags & HAS_NORMALS ) {
+
+		for ( let i = 0; i < normals.length; i += 3 ) {
+
+			const [ oct1, oct2 ] = encodeUnitVector( normals[ i ], normals[ i + 1 ], normals[ i + 2 ] )
+
+			view.setUint8( offset++, oct1 )
+			view.setUint8( offset++, oct2 )
+		}
 	}
 
 	return buffer
@@ -73,6 +105,9 @@ function decode( buffer ) {
 		}
 	}
 
+	// Read flags
+	const flags = view.getUint8( offset++ )
+
 	// Read vertex count (uint16 = 2 bytes)
 	const vertexCount = view.getUint16( offset, true )
 	offset += 2
@@ -84,13 +119,29 @@ function decode( buffer ) {
 
 		const float16 = view.getUint16( offset, true )
 		vertices[ i ] = float16ToFloa32( float16 )
-
 		offset += 2
 	}
 
-	return {
-		vertices,
+	// Read normals if present
+	let normals = null
+
+	if ( flags & HAS_NORMALS ) {
+
+		normals = new Float32Array( vertexCount * 3 )
+
+		for ( let i = 0; i < vertexCount; i++ ) {
+
+			const oct1 = view.getUint8( offset++ )
+			const oct2 = view.getUint8( offset++ )
+			const [ x, y, z ] = decodeUnitVector( oct1, oct2 )
+
+			normals[ i * 3 ] = x
+			normals[ i * 3 + 1 ] = y
+			normals[ i * 3 + 2 ] = z
+		}
 	}
+
+	return { vertices, normals }
 }
 
 /**
