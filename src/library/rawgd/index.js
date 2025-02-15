@@ -3,8 +3,10 @@ const MAGIC = new Uint8Array( [ 82, 65, 87, 71, 68 ] ) // RAWGD
 const HAS_INDICES = 0x01
 const HAS_NORMALS = 0x02
 const HAS_UVS = 0x04
+const HAS_RGBA5551 = 0x08
+const HAS_RGB565 = 0x10
 
-export function encode( { vertices, indices, normals, uvs } ) {
+export function encode( { vertices, indices, normals, uvs, colors } ) {
 
 	let flags = 0
 
@@ -21,6 +23,15 @@ export function encode( { vertices, indices, normals, uvs } ) {
 	if ( uvs ) {
 
 		flags |= HAS_UVS
+	}
+
+	// Check color format from array length
+	if ( colors.length === vertices.length / 3 * 4 ) {
+
+		flags |= HAS_RGBA5551
+	}
+	else {
+		flags |= HAS_RGB565
 	}
 
 	// Calculate buffer size in bytes
@@ -42,7 +53,12 @@ export function encode( { vertices, indices, normals, uvs } ) {
 
 	if ( flags & HAS_UVS ) {
 
-		size += uvs.length * 2  // 2 bytes per uv component (int16)
+		size += uvs.length * 2	// 2 bytes per uv component (int16)
+	}
+
+	if ( flags & ( HAS_RGB565 | HAS_RGBA5551 ) ) {
+
+		size += colors.length / ( flags & HAS_RGBA5551 ? 4 : 3 ) * 2
 	}
 
 	const buffer = new ArrayBuffer( size )
@@ -110,6 +126,37 @@ export function encode( { vertices, indices, normals, uvs } ) {
 			const quantized = Math.floor( uvs[ i ] * 32_767 ) // Convert from float to int16
 			view.setInt16( offset, quantized, true )
 
+			offset += 2
+		}
+	}
+
+	// Write colors if present
+	if ( flags & HAS_RGBA5551 ) {
+
+		for ( let i = 0; i < colors.length; i += 4 ) {
+
+			const color = floatToRGBA5551(
+				colors[ i ],
+				colors[ i + 1 ],
+				colors[ i + 2 ],
+				colors[ i + 3 ]
+			)
+
+			view.setUint16( offset, color, true )
+			offset += 2
+		}
+	}
+	else if ( flags & HAS_RGB565 ) {
+
+		for ( let i = 0; i < colors.length; i += 3 ) {
+
+			const color = floatToRGB565(
+				colors[ i ],
+				colors[ i + 1 ],
+				colors[ i + 2 ]
+			)
+
+			view.setUint16( offset, color, true )
 			offset += 2
 		}
 	}
@@ -211,7 +258,45 @@ export function decode( buffer ) {
 		}
 	}
 
-	return { vertices, indices, normals, uvs }
+	// Read colors if present
+	let colorsRGB = null
+	let colorsRGBA = null
+
+	if ( flags & HAS_RGBA5551 ) {
+
+		colorsRGBA = new Float32Array( vertexCount * 4 )
+
+		for ( let i = 0; i < vertexCount; i++ ) {
+
+			const rgba5551 = view.getUint16( offset, true )
+			const [ r, g, b, a]  = rgba5551ToFloat( rgba5551 )
+
+			colorsRGBA[ i * 4 ] = r
+			colorsRGBA[ i * 4 + 1 ] = g
+			colorsRGBA[ i * 4 + 2 ] = b
+			colorsRGBA[ i * 4 + 3 ] = a
+
+			offset += 2
+		}
+	}
+	else if ( flags & HAS_RGB565 ) {
+
+		colorsRGB = new Float32Array( vertexCount * 3 )
+
+		for ( let i = 0; i < vertexCount; i++ ) {
+
+			const rgb565 = view.getUint16( offset, true )
+			const [ r, g, b ] = rgb565ToFloat( rgb565 )
+
+			colorsRGB[ i * 3 ] = r
+			colorsRGB[ i * 3 + 1 ] = g
+			colorsRGB[ i * 3 + 2 ] = b
+
+			offset += 2
+		}
+	}
+
+	return { vertices, indices, normals, uvs, colorsRGB, colorsRGBA }
 }
 
 /**

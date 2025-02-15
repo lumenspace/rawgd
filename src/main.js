@@ -14,7 +14,7 @@ const texture = new THREE.TextureLoader().load( "/uv.png", t => {
 {
 	const buffer = await ( await fetch( "/sample-geometries/sphere.rawgd" ) ).arrayBuffer()
 
-	const { indices, vertices, normals, uvs } = RAWGD.decode( buffer )
+	const { indices, vertices, normals, uvs, colorsRGB, colorsRGBA } = RAWGD.decode( buffer )
 
 	const geometry = new THREE.BufferGeometry()
 
@@ -35,19 +35,51 @@ const texture = new THREE.TextureLoader().load( "/uv.png", t => {
 		geometry.setAttribute( "uv", new THREE.BufferAttribute( uvs, 2 ) )
 	}
 
+	if ( uvs !== null ) {
+
+		geometry.setAttribute( "uv", new THREE.BufferAttribute( uvs, 2 ) )
+	}
+
+	if ( colorsRGB !== null ) {
+
+		geometry.setAttribute( "color", new THREE.BufferAttribute( colorsRGB, 3 ) )
+	}
+
+	if ( colorsRGBA !== null ) {
+
+		geometry.setAttribute( "color", new THREE.BufferAttribute( colorsRGBA, 4 ) )
+	}
+
 	//
 
-	scene.add( new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { flatShading: !true, wireframe: true, map: texture } ) ) )
+	scene.add( new THREE.Points( geometry, new THREE.PointsMaterial( { sizeAttenuation: false, size: 5, transparent: true, vertexColors: true } ) ) )
 }
 
 // const geometry = new THREE.SphereGeometry( 5 )
-// scene.add( new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { flatShading: true, map: texture } ) ) )
+
+// const count = geometry.attributes.position.count
+
+// let colors = []
+
+// for ( let i = 0; i < count; i++ ) {
+
+// 	const alpha = Math.random() > 0.5 ? 1 : 0
+
+// 	colors.push( 1, 0, 1, alpha )
+// }
+
+// colors = new Float32Array( colors )
+
+// geometry.setAttribute( "color", new THREE.BufferAttribute( colors, 4 ) )
+
+// scene.add( new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { transparent: true, flatShading: !true, map: !texture, vertexColors: true } ) ) )
 
 // const buffer = RAWGD.encode( {
 // 	vertices: geometry.attributes.position.array,
 // 	indices: geometry.index.array,
 // 	normals: geometry.attributes.normal.array,
 // 	uvs: geometry.attributes.uv.array,
+// 	colors,
 // } )
 
 // const vertices = new Float32Array( [ - 5, 0, 5, 5, 0, 5, 5, 0, - 5, - 5, 0, - 5 ] )
