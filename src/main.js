@@ -1,26 +1,36 @@
 const MAGIC = new Uint8Array( [ 82, 65, 87, 71, 68 ] ) // RAWGD
 
-const HAS_NORMALS = 0x02 // 0x01 reserved for triangles (indices)
+const HAS_INDICES = 0x01
+const HAS_NORMALS = 0x02
 
 //
 
 const vertices = new Float32Array( [ - 5, 0, 5, 5, 0, 5, 5, 0, - 5, - 5, 0, - 5 ] )
+const indices = new Uint16Array( [ 0, 1, 2, 2, 3, 0 ] )
 const normals = new Float32Array( [ 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 ] )
 
-const buffer = encode( { vertices, normals } )
+const buffer = encode( { vertices, indices, normals } )
+
+console.log( buffer )
 
 {
-	const { vertices, normals } = decode( buffer )
+	const { vertices, indices, normals } = decode( buffer )
 
 	console.log( [ ...vertices ] )
+	console.log( [ ...indices ] )
 	console.log( [ ...normals ] )
 }
 
 //
 
-function encode( { vertices, normals } ) {
+function encode( { vertices, indices, normals } ) {
 
 	let flags = 0
+
+	if ( indices ) {
+
+		flags |= HAS_INDICES
+	}
 
 	if ( normals ) {
 
@@ -32,6 +42,12 @@ function encode( { vertices, normals } ) {
 	size += 1						// 1 byte for flags
 	size += 2						// 2 bytes for vertex count
 	size += vertices.length * 2		// 2 bytes per vertex component (float16)
+
+	if ( flags & HAS_INDICES ) {
+
+		size += 2					// 2 bytes for index count
+		size += indices.length * 2	// 2 bytes per index (uint16)
+	}
 
 	if ( flags & HAS_NORMALS ) {
 
@@ -63,8 +79,24 @@ function encode( { vertices, normals } ) {
 	for ( let i = 0; i < vertices.length; i++ ) {
 
 		const float16 = float32ToFloat16( vertices[ i ] )
+
 		view.setUint16( offset, float16, true )
 		offset += 2
+	}
+
+	 // Write indices if present
+	if ( flags & HAS_INDICES ) {
+
+		// Write index count
+		view.setUint16( offset, indices.length, true )
+		offset += 2
+
+		// Write indices
+		for ( let i = 0; i < indices.length; i++ ) {
+
+			view.setUint16( offset, indices[ i ], true )
+			offset += 2
+		}
 	}
 
 	// Write normals if present
@@ -122,6 +154,25 @@ function decode( buffer ) {
 		offset += 2
 	}
 
+	// Read indices if present
+	let indices = null
+
+	if ( flags & HAS_INDICES ) {
+
+		const indexCount = view.getUint16( offset, true )
+
+		offset += 2
+
+		indices = new Uint16Array( indexCount )
+
+		for ( let i = 0; i < indexCount; i++ ) {
+
+			indices[ i ] = view.getUint16( offset, true )
+
+			offset += 2
+		}
+	}
+
 	// Read normals if present
 	let normals = null
 
@@ -141,7 +192,7 @@ function decode( buffer ) {
 		}
 	}
 
-	return { vertices, normals }
+	return { vertices, indices, normals }
 }
 
 /**
