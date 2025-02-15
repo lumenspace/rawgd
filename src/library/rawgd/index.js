@@ -388,3 +388,90 @@ function decodeUnitVector( oct1, oct2 ) {
 
 	return [ x / length, y / length, z / length ]
 }
+
+/**
+* Converts float RGB values [0-1] to RGB565 format
+*
+* @param {number} r - Red component [0-1]
+* @param {number} g - Green component [0-1]
+* @param {number} b - Blue component [0-1]
+* @returns {number} 16-bit RGB565 value
+*
+* @example
+* const rgb565 = floatToRGB565( 1, 0, 0 ) // returns 63488 (pure red)
+* const rgb565 = floatToRGB565( 0, 1, 0 ) // returns 2016 (pure green)
+* const rgb565 = floatToRGB565( 0, 0, 1 ) // returns 31 (pure blue)
+*/
+function floatToRGB565( r, g, b ) {
+
+	const r5 = Math.round( r * 31 )
+	const g6 = Math.round( g * 63 )
+	const b5 = Math.round( b * 31 )
+
+	return ( r5 << 11 ) | ( g6 << 5 ) | b5
+}
+
+/**
+* Converts RGB565 value to float RGB values [0-1]
+*
+* @param {number} rgb565 - 16-bit RGB565 value
+* @returns {[number, number, number]} RGB float values
+*
+* @example
+* const [ r, g, b ] = rgb565ToFloat( 63488 ) // returns [1, 0, 0] (pure red)
+* const [ r, g, b ] = rgb565ToFloat( 2016 )  // returns [0, 1, 0] (pure green)
+* const [ r, g, b ] = rgb565ToFloat( 31 )    // returns [0, 0, 1] (pure blue)
+*/
+function rgb565ToFloat( rgb565 ) {
+
+	const r = ( ( rgb565 >> 11 ) & 0x1F ) / 31
+	const g = ( ( rgb565 >> 5 ) & 0x3F ) / 63
+	const b = ( rgb565 & 0x1F ) / 31
+
+	return [ r, g, b ]
+}
+
+/**
+* Converts float RGBA values [0-1] to RGBA5551 format
+*
+* @param {number} r - Red component [0-1]
+* @param {number} g - Green component [0-1]
+* @param {number} b - Blue component [0-1]
+* @param {number} a - Alpha component [0-1]
+* @returns {number} 16-bit RGBA5551 value
+*
+* @example
+* const rgba5551 = floatToRGBA5551( 1, 0, 0, 1 ) // returns 63489 (pure red, full alpha)
+* const rgba5551 = floatToRGBA5551( 0, 1, 0, 1 ) // returns 1985 (pure green, full alpha)
+* const rgba5551 = floatToRGBA5551( 0, 0, 1, 0 ) // returns 30 (pure blue, zero alpha)
+*/
+function floatToRGBA5551( r, g, b, a ) {
+
+	const r5 = Math.round( r * 31 )
+	const g5 = Math.round( g * 31 )
+	const b5 = Math.round( b * 31 )
+	const a1 = a > 0.5 ? 1 : 0
+
+	return ( r5 << 11 ) | ( g5 << 6 ) | ( b5 << 1 ) | a1
+}
+
+/**
+* Converts RGBA5551 value to float RGBA values [0-1]
+*
+* @param {number} rgba5551 - 16-bit RGBA5551 value
+* @returns {[number, number, number, number]} RGBA float values
+*
+* @example
+* const [ r, g, b, a ] = rgba5551ToFloat( 63489 ) // returns [1, 0, 0, 1] (pure red, full alpha)
+* const [ r, g, b, a ] = rgba5551ToFloat( 1985 )  // returns [0, 1, 0, 1] (pure green, full alpha)
+* const [ r, g, b, a ] = rgba5551ToFloat( 30 )    // returns [0, 0, 1, 0] (pure blue, zero alpha)
+*/
+function rgba5551ToFloat( rgba5551 ) {
+
+	const r = ( ( rgba5551 >> 11 ) & 0x1F ) / 31
+	const g = ( ( rgba5551 >> 6 ) & 0x1F ) / 31
+	const b = ( ( rgba5551 >> 1 ) & 0x1F ) / 31
+	const a = ( rgba5551 & 0x1 ) ? 1 : 0
+
+	return [ r, g, b, a ]
+}
