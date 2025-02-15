@@ -10,6 +10,8 @@ export function setupScene( canvas ) {
 	camera.lookAt( 0, 0, 0 )
 
 	const controls = new MapControls( camera, canvas )
+	controls.enableDamping = true
+	controls.zoomToCursor = true
 
 	const renderer = new THREE.WebGLRenderer( { canvas } )
 	renderer.setPixelRatio( window.devicePixelRatio )
@@ -18,6 +20,8 @@ export function setupScene( canvas ) {
 	const render = () => {
 
 		requestAnimationFrame( render )
+
+		controls.update()
 
 		renderer.render( scene, camera )
 	}

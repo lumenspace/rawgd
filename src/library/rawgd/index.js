@@ -2,8 +2,9 @@ const MAGIC = new Uint8Array( [ 82, 65, 87, 71, 68 ] ) // RAWGD
 
 const HAS_INDICES = 0x01
 const HAS_NORMALS = 0x02
+const HAS_UVS = 0x04
 
-export function encode( { vertices, indices, normals } ) {
+export function encode( { vertices, indices, normals, uvs } ) {
 
 	let flags = 0
 
@@ -15,6 +16,11 @@ export function encode( { vertices, indices, normals } ) {
 	if ( normals ) {
 
 		flags |= HAS_NORMALS
+	}
+
+	if ( uvs ) {
+
+		flags |= HAS_UVS
 	}
 
 	// Calculate buffer size in bytes
@@ -32,6 +38,11 @@ export function encode( { vertices, indices, normals } ) {
 	if ( flags & HAS_NORMALS ) {
 
 		size += normals.length * 2 / 3	// 2 bytes per normal (octahedral encoded)
+	}
+
+	if ( flags & HAS_UVS ) {
+
+		size += uvs.length * 2  // 2 bytes per uv component (int16)
 	}
 
 	const buffer = new ArrayBuffer( size )
@@ -64,7 +75,7 @@ export function encode( { vertices, indices, normals } ) {
 		offset += 2
 	}
 
-	 // Write indices if present
+	// Write indices if present
 	if ( flags & HAS_INDICES ) {
 
 		// Write index count
@@ -88,6 +99,18 @@ export function encode( { vertices, indices, normals } ) {
 
 			view.setUint8( offset++, oct1 )
 			view.setUint8( offset++, oct2 )
+		}
+	}
+
+	// Write UVs if present
+	if ( flags & HAS_UVS ) {
+
+		for ( let i = 0; i < uvs.length; i++ ) {
+
+			const quantized = Math.floor( uvs[ i ] * 32_767 ) // Convert from float to int16
+			view.setInt16( offset, quantized, true )
+
+			offset += 2
 		}
 	}
 
@@ -172,9 +195,24 @@ export function decode( buffer ) {
 		}
 	}
 
-	return { vertices, indices, normals }
-}
+	// Read UVs if present
+	let uvs = null
 
+	if ( flags & HAS_UVS ) {
+
+		uvs = new Float32Array( vertexCount * 2 )
+
+		for ( let i = 0; i < uvs.length; i++ ) {
+
+			const quantized = view.getInt16( offset, true )
+			uvs[ i ] = quantized / 32_767 // Convert from int16 back to float
+
+			offset += 2
+		}
+	}
+
+	return { vertices, indices, normals, uvs }
+}
 
 /**
  * Converts a 32-bit floating-point number (IEEE 754 single-precision) to 

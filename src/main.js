@@ -4,11 +4,17 @@ import { setupScene } from "./setupScene"
 
 const { scene } = setupScene( document.getElementById( "gl" ) )
 
+const texture = new THREE.TextureLoader().load( "/uv.png", t => {
+	t.colorSpace = THREE.SRGBColorSpace
+	t.wrapS = t.wrapT = THREE.RepeatWrapping
+	t.anisotropy = 16
+} )
+
 // Test a binary file
 {
 	const buffer = await ( await fetch( "/sample-geometries/sphere.rawgd" ) ).arrayBuffer()
 
-	const { indices, vertices, normals } = RAWGD.decode( buffer )
+	const { indices, vertices, normals, uvs } = RAWGD.decode( buffer )
 
 	const geometry = new THREE.BufferGeometry()
 
@@ -24,18 +30,24 @@ const { scene } = setupScene( document.getElementById( "gl" ) )
 		geometry.setAttribute( "normal", new THREE.BufferAttribute( normals, 3 ) )
 	}
 
+	if ( uvs !== null ) {
+
+		geometry.setAttribute( "uv", new THREE.BufferAttribute( uvs, 2 ) )
+	}
+
 	//
 
-	scene.add( new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { flatShading: true } ) ) )
+	scene.add( new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { flatShading: !true, wireframe: true, map: texture } ) ) )
 }
 
 // const geometry = new THREE.SphereGeometry( 5 )
-// scene.add( new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { flatShading: true } ) ) )
+// scene.add( new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { flatShading: true, map: texture } ) ) )
 
 // const buffer = RAWGD.encode( {
 // 	vertices: geometry.attributes.position.array,
 // 	indices: geometry.index.array,
 // 	normals: geometry.attributes.normal.array,
+// 	uvs: geometry.attributes.uv.array,
 // } )
 
 // const vertices = new Float32Array( [ - 5, 0, 5, 5, 0, 5, 5, 0, - 5, - 5, 0, - 5 ] )
