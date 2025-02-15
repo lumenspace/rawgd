@@ -9,6 +9,9 @@ const buffer = encode( { vertices } )
 console.log( vertices )
 console.log( decode( buffer ).vertices )
 
+console.log( decodeUnitVector( ...encodeUnitVector( 0, 1, 0 ) ) )
+console.log( decodeUnitVector( ...encodeUnitVector( 0, 0, 1 ) ) )
+
 //
 
 function encode( { vertices } ) {
@@ -176,4 +179,91 @@ function float16ToFloa32( float16Bits ) {
 	const uint32Buffer = new Uint32Array( [ reconstructed ] )
 
 	return new Float32Array( uint32Buffer.buffer )[ 0 ]
+}
+
+/**
+* Encodes a normalized 3D vector into two 8-bit values using octahedral encoding.
+* This compression method preserves the unit length while reducing storage from 
+* 12 bytes (3 floats) to 2 bytes.
+*
+* The encoding process:
+* 1. Projects the unit vector onto octahedron
+* 2. Folds the bottom octahedron triangles onto the top ones
+* 3. Maps the octahedron to [0,1] range
+* 4. Quantizes to 8-bit integers
+*
+* @param {number} x - X component of the normalized vector
+* @param {number} y - Y component of the normalized vector
+* @param {number} z - Z component of the normalized vector
+* @returns {[number, number]} Array containing two 8-bit values [oct1, oct2]
+*
+* @example
+* const [ oct1, oct2 ] = encodeUnitVector( 0, 1, 0 ) // encodes a vector pointing up
+*/
+function encodeUnitVector( x, y, z ) {
+
+	// Project the unit vector onto octahedron (L1 normalization)
+	const invL1Norm = 1 / ( Math.abs( x ) + Math.abs( y ) + Math.abs( z ) )
+	let nx = x * invL1Norm
+	let ny = y * invL1Norm
+
+	// Handle the negative z hemisphere by folding the octahedron
+	if ( z < 0 ) {
+
+		const tempX = ( 1 - Math.abs( ny ) ) * ( nx >= 0 ? 1 : - 1 )
+		const tempY = ( 1 - Math.abs( nx ) ) * ( ny >= 0 ? 1 : - 1 )
+
+		nx = tempX
+		ny = tempY
+	}
+
+	// Map from [ - 1, 1 ] to [ 0, 1 ] range and then quantize to 8-bit integers
+	const oct1 = Math.round( ( nx * 0.5 + 0.5 ) * 255 )
+	const oct2 = Math.round( ( ny * 0.5 + 0.5 ) * 255 )
+
+	return [ oct1, oct2 ]
+}
+
+/**
+* Decodes two 8-bit values back into a normalized 3D vector.
+* This is the inverse operation of encodeUnitVector.
+*
+* The decoding process:
+* 1. Converts 8-bit integers back to [0,1] range
+* 2. Maps to [-1,1] range
+* 3. Reconstructs Z component
+* 4. Unfolds octahedron if needed
+* 5. Normalizes the final vector
+*
+* @param {number} oct1 - First 8-bit value (0-255)
+* @param {number} oct2 - Second 8-bit value (0-255)
+* @returns {[number, number, number]} Array containing normalized vector [x, y, z]
+*
+* @example
+* const [ x, y, z ] = decodeUnitVector( 128, 255 ) // decodes back to a normalized vector
+*/
+function decodeUnitVector( oct1, oct2 ) {
+
+	// Convert from 8-bit integers to [ - 1, 1 ] range
+	let x = ( oct1 / 255 ) * 2 - 1
+	let y = ( oct2 / 255 ) * 2 - 1
+
+	// Compute Z component from octahedral map
+	let z = 1 - Math.abs( x ) - Math.abs( y )
+
+	// Handle the folded octahedron case
+	if ( z < 0 ) {
+
+		const tempX = ( 1 - Math.abs( y ) ) * ( x >= 0 ? 1 : - 1 )
+		const tempY = ( 1 - Math.abs( x ) ) * ( y >= 0 ? 1 : - 1 )
+
+		x = tempX
+		y = tempY
+		z = - z
+	}
+
+	// Normalize the vector to ensure unit length
+	const length = Math.sqrt( x * x + y * y + z * z )
+
+	return [ x / length, y / length, z / length ]
 }
