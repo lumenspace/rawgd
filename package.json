@@ -1,8 +1,17 @@
 {
 	"name": "rawgd",
 	"private": true,
-	"version": "0.0.0",
+	"version": "1.0.0",
 	"type": "module",
+	"files": [ "dist/rawgd" ],
+	"main": "./dist/rawgd/index.umd.js",
+	"module": "./dist/rawgd/index.es.js",
+	"exports": {
+		".": {
+			"import": "./dist/index/rawgd.es.js",
+			"require": "./dist/index/rawgd.umd.js"
+		}
+	},
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
@@ -12,6 +21,7 @@
 	"devDependencies": {
 		"vite": "^6.1.0",
 		"vite-plugin-eslint": "^1.8.1",
+		"vite-plugin-static-copy": "^2.2.0",
 		"vitest": "^3.0.5"
 	},
 	"dependencies": {
