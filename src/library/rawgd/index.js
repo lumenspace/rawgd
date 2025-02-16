@@ -10,6 +10,30 @@ const HAS_UVS = 0x04
 const HAS_RGBA5551 = 0x08
 const HAS_RGB565 = 0x10
 
+/**
+* Encodes 3D geometry data into a binary RAWGD format buffer.
+* Compresses vertex attributes using optimized formats:
+* - Vertices: 16-bit half-float
+* - Normals: 8-bit octahedral encoding 
+* - UVs: 16-bit quantized
+* - Colors: RGB565 or RGBA5551
+*
+* @param {Object} geometry - Geometry data to encode
+* @param {Float32Array} geometry.vertices - Vertex positions [x,y,z, x,y,z, ...]
+* @param {Uint16Array} [geometry.indices] - Triangle indices [i1,i2,i3, i1,i2,i3, ...]
+* @param {Float32Array} [geometry.normals] - Vertex normals [nx,ny,nz, nx,ny,nz, ...]
+* @param {Float32Array} [geometry.uvs] - Texture coordinates [u,v, u,v, ...]
+* @param {Float32Array} [geometry.colors] - Vertex colors [r,g,b, r,g,b, ...] or [r,g,b,a, r,g,b,a, ...]
+* @returns {ArrayBuffer} Encoded binary buffer in RAWGD format
+*
+* @example
+* const geometry = {
+*     vertices: new Float32Array( [-1,0,1, 1,0,1, 1,0,-1] ),
+*     normals: new Float32Array( [0,1,0, 0,1,0, 0,1,0] ),
+*     colors: new Float32Array( [1,0,0,1, 0,1,0,1, 0,0,1,1] )
+* }
+* const buffer = encode( geometry )
+*/
 export function encode( { vertices, indices, normals, uvs, colors } ) {
 
 	let flags = 0
@@ -176,6 +200,29 @@ export function encode( { vertices, indices, normals, uvs, colors } ) {
 	return buffer
 }
 
+/**
+ * Decodes a binary RAWGD format buffer into 3D geometry data.
+ *
+ * Decompresses vertex attributes from optimized formats:
+ * - Vertices: 16-bit half-float to 32-bit float
+ * - Normals: 8-bit octahedral to normalized vectors
+ * - UVs: 16-bit quantized to float
+ * - Colors: RGB565/RGBA5551 to float components
+ *
+ * @param {ArrayBuffer} buffer - Binary buffer in RAWGD format
+ * @returns {Object} Decoded geometry data
+ * @returns {Object} version - Format version {major, minor}
+ * @returns {Float32Array} vertices - Vertex positions [x,y,z, x,y,z, ...]
+ * @returns {Uint16Array} [indices] - Triangle indices [i1,i2,i3, i1,i2,i3, ...]
+ * @returns {Float32Array} [normals] - Vertex normals [nx,ny,nz, nx,ny,nz, ...]
+ * @returns {Float32Array} [uvs] - Texture coordinates [u,v, u,v, ...]
+ * @returns {Float32Array} [colorsRGB] - RGB colors [r,g,b, r,g,b, ...]
+ * @returns {Float32Array} [colorsRGBA] - RGBA colors [r,g,b,a, r,g,b,a, ...]
+ * @throws {Error} If file format is invalid
+ *
+ * @example
+ * const { vertices, normals, colorsRGBA } = decode( buffer )
+ */
 export function decode( buffer ) {
 
 	const view = new DataView( buffer )
