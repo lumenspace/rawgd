@@ -1,5 +1,9 @@
 const MAGIC = new Uint8Array( [ 82, 65, 87, 71, 68 ] ) // RAWGD
 
+// Define version
+const VERSION_MAJOR = 1
+const VERSION_MINOR = 0
+
 const HAS_INDICES = 0x01
 const HAS_NORMALS = 0x02
 const HAS_UVS = 0x04
@@ -26,16 +30,20 @@ export function encode( { vertices, indices, normals, uvs, colors } ) {
 	}
 
 	// Check color format from array length
-	if ( colors.length === vertices.length / 3 * 4 ) {
+	if ( colors ) {
 
-		flags |= HAS_RGBA5551
-	}
-	else {
-		flags |= HAS_RGB565
+		if ( colors.length === vertices.length / 3 * 4 ) {
+
+			flags |= HAS_RGBA5551
+		}
+		else {
+			flags |= HAS_RGB565
+		}
 	}
 
 	// Calculate buffer size in bytes
 	let size = MAGIC.length			// 5 bytes for "RAWGD"
+	size += 1						// 1 byte for version
 	size += 1						// 1 byte for flags
 	size += 2						// 2 bytes for vertex count
 	size += vertices.length * 2		// 2 bytes per vertex component (float16)
@@ -73,6 +81,10 @@ export function encode( { vertices, indices, normals, uvs, colors } ) {
 
 		offset++
 	}
+
+	// Write version information (1 byte)
+	const version = encodeVersion()
+	view.setUint8( offset++, version )
 
 	// Write flags
 	view.setUint8( offset, flags )
@@ -187,6 +199,9 @@ export function decode( buffer ) {
 		}
 	}
 
+	// Read version information (1 byte)
+	const version = decodeVersion( view.getUint8( offset++ ) )
+
 	// Read flags
 	const flags = view.getUint8( offset++ )
 
@@ -296,7 +311,7 @@ export function decode( buffer ) {
 		}
 	}
 
-	return { vertices, indices, normals, uvs, colorsRGB, colorsRGBA }
+	return { version, vertices, indices, normals, uvs, colorsRGB, colorsRGBA }
 }
 
 /**
@@ -559,4 +574,37 @@ function rgba5551ToFloat( rgba5551 ) {
 	const a = ( rgba5551 & 0x1 ) ? 1 : 0
 
 	return [ r, g, b, a ]
+}
+
+/**
+* Encodes version info into a single byte.
+* Major and minor versions are stored in the same byte:
+* - Major version uses the first 4 bits (values 0-15)
+* - Minor version uses the last 4 bits (values 0-15)
+* @returns {number} Encoded version byte
+*
+* @example
+* // Version 1.0 = 00010000 = 16
+* const versionByte = encodeVersion() // returns 16
+*/
+function encodeVersion() {
+
+	return ( VERSION_MAJOR << 4 ) | VERSION_MINOR
+}
+
+/**
+* Decodes version info from a single byte
+* @param {number} byte - Version byte to decode
+* @returns {{major: number, minor: number}} Object containing major and minor version numbers
+*
+* @example
+* // 00010000 = Version 1.0
+* const version = decodeVersion( 16 ) // returns { major: 1, minor: 0 }
+*/
+function decodeVersion( byte ) {
+
+	const major = (byte >> 4) & 0x0F	// Extract first 4 bits
+	const minor = byte & 0x0F			// Extract last 4 bits
+
+	return { major, minor }
 }

@@ -14,7 +14,9 @@ const texture = new THREE.TextureLoader().load( "/uv.png", t => {
 {
 	const buffer = await ( await fetch( "/sample-geometries/sphere.rawgd" ) ).arrayBuffer()
 
-	const { indices, vertices, normals, uvs, colorsRGB, colorsRGBA } = RAWGD.decode( buffer )
+	const { version, indices, vertices, normals, uvs, colorsRGB, colorsRGBA } = RAWGD.decode( buffer )
+
+	console.log( version )
 
 	const geometry = new THREE.BufferGeometry()
 
@@ -52,7 +54,12 @@ const texture = new THREE.TextureLoader().load( "/uv.png", t => {
 
 	//
 
-	scene.add( new THREE.Points( geometry, new THREE.PointsMaterial( { sizeAttenuation: false, size: 5, transparent: true, vertexColors: true } ) ) )
+	scene.add( new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( {
+		flatShading: true,
+		map: texture,
+		transparent: true,
+		vertexColors: true,
+	} ) ) )
 }
 
 // const geometry = new THREE.SphereGeometry( 5 )
