@@ -74,38 +74,40 @@ Optional Data (based on flags):
 ### Encoding
 
 ```javascript
+import * as RAWGD from "@lib/rawgd"
+
 const geometry = {
-    vertices: new Float32Array([   // Required
-        -1, 0, 1,                 // x, y, z
+    vertices: new Float32Array( [   // Required
+        - 1, 0, 1,                 // x, y, z
         1, 0, 1,
-        1, 0, -1,
-        -1, 0, -1
-    ]),
-    indices: new Uint16Array([     // Optional
+        1, 0, - 1,
+        - 1, 0, - 1,
+    ] ),
+    indices: new Uint16Array( [     // Optional
         0, 1, 2,
-        2, 3, 0
-    ]),
-    normals: new Float32Array([    // Optional
+        2, 3, 0,
+    ] ),
+    normals: new Float32Array( [    // Optional
         0, 1, 0,
         0, 1, 0,
         0, 1, 0,
-        0, 1, 0
-    ]),
-    uvs: new Float32Array([        // Optional
+        0, 1, 0,
+    ] ),
+    uvs: new Float32Array( [        // Optional
         0, 0,
         1, 0,
         1, 1,
-        0, 1
-    ]),
-    colors: new Float32Array([     // Optional
+        0, 1,
+    ] ),
+    colors: new Float32Array( [     // Optional
         1, 0, 0, 1,               // r, g, b, a
         1, 0, 0, 1,
         1, 0, 0, 1,
-        1, 0, 0, 1
-    ])
+        1, 0, 0, 1,
+    ] )
 }
 
-const buffer = encode(geometry)
+const buffer = RAWGD.encode( geometry )
 ```
 
 ### Decoding
@@ -118,7 +120,7 @@ const {
     uvs,         // Float32Array [u,v, u,v, ...]
     colorsRGB,   // Float32Array [r,g,b, r,g,b, ...] if RGB565
     colorsRGBA   // Float32Array [r,g,b,a, r,g,b,a, ...] if RGBA5551
-} = decode(buffer)
+} = RAWGD.decode( buffer )
 ```
 
 ## Size Comparison
