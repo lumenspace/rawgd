@@ -372,7 +372,7 @@ export function decode( buffer ) {
  * @example
  * const half = float32ToFloat16( 1.5498046875 ) // returns 15923 (0x3E3B)
  */
-function float32ToFloat16( float32Value ) {
+export function float32ToFloat16( float32Value ) {
 
 	// Use typed arrays to ensure bit-accurate conversion
 	const float32Buffer = new Float32Array( [ float32Value ] )
@@ -423,7 +423,7 @@ function float32ToFloat16( float32Value ) {
  * @example
  * const single = float16ToFloa32( 15923 ) // returns ~1.5498046875
  */
-function float16ToFloa32( float16Bits ) {
+export function float16ToFloa32( float16Bits ) {
 
 	// Decompose Float16 into components
 	// IEEE 754 Float16 layout: [1 sign bit | 5 exponent bits | 10 mantissa bits]
@@ -468,7 +468,7 @@ function float16ToFloa32( float16Bits ) {
 * @example
 * const [ oct1, oct2 ] = encodeUnitVector( 0, 1, 0 ) // encodes a vector pointing up
 */
-function encodeUnitVector( x, y, z ) {
+export function encodeUnitVector( x, y, z ) {
 
 	// Project the unit vector onto octahedron (L1 normalization)
 	const invL1Norm = 1 / ( Math.abs( x ) + Math.abs( y ) + Math.abs( z ) )
@@ -510,7 +510,7 @@ function encodeUnitVector( x, y, z ) {
 * @example
 * const [ x, y, z ] = decodeUnitVector( 128, 255 ) // decodes back to a normalized vector
 */
-function decodeUnitVector( oct1, oct2 ) {
+export function decodeUnitVector( oct1, oct2 ) {
 
 	// Convert from 8-bit integers to [ - 1, 1 ] range
 	let x = ( oct1 / 255 ) * 2 - 1
@@ -549,7 +549,7 @@ function decodeUnitVector( oct1, oct2 ) {
 * const rgb565 = floatToRGB565( 0, 1, 0 ) // returns 2016 (pure green)
 * const rgb565 = floatToRGB565( 0, 0, 1 ) // returns 31 (pure blue)
 */
-function floatToRGB565( r, g, b ) {
+export function floatToRGB565( r, g, b ) {
 
 	const r5 = Math.round( r * 31 )
 	const g6 = Math.round( g * 63 )
@@ -569,7 +569,7 @@ function floatToRGB565( r, g, b ) {
 * const [ r, g, b ] = rgb565ToFloat( 2016 )  // returns [0, 1, 0] (pure green)
 * const [ r, g, b ] = rgb565ToFloat( 31 )    // returns [0, 0, 1] (pure blue)
 */
-function rgb565ToFloat( rgb565 ) {
+export function rgb565ToFloat( rgb565 ) {
 
 	const r = ( ( rgb565 >> 11 ) & 0x1F ) / 31
 	const g = ( ( rgb565 >> 5 ) & 0x3F ) / 63
@@ -592,7 +592,7 @@ function rgb565ToFloat( rgb565 ) {
 * const rgba5551 = floatToRGBA5551( 0, 1, 0, 1 ) // returns 1985 (pure green, full alpha)
 * const rgba5551 = floatToRGBA5551( 0, 0, 1, 0 ) // returns 30 (pure blue, zero alpha)
 */
-function floatToRGBA5551( r, g, b, a ) {
+export function floatToRGBA5551( r, g, b, a ) {
 
 	const r5 = Math.round( r * 31 )
 	const g5 = Math.round( g * 31 )
@@ -613,7 +613,7 @@ function floatToRGBA5551( r, g, b, a ) {
 * const [ r, g, b, a ] = rgba5551ToFloat( 1985 )  // returns [0, 1, 0, 1] (pure green, full alpha)
 * const [ r, g, b, a ] = rgba5551ToFloat( 30 )    // returns [0, 0, 1, 0] (pure blue, zero alpha)
 */
-function rgba5551ToFloat( rgba5551 ) {
+export function rgba5551ToFloat( rgba5551 ) {
 
 	const r = ( ( rgba5551 >> 11 ) & 0x1F ) / 31
 	const g = ( ( rgba5551 >> 6 ) & 0x1F ) / 31
